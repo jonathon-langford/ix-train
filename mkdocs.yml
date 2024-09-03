@@ -5,6 +5,10 @@ edit_uri: edit/main/docs
 
 nav:
         - Home: index.md
+        - Lecture Notes:
+            - Overview: lecture_notes/Introduction.md
+        - Tutorials:
+            - Tutorials: tutorials/Introduction.md
 
 theme:
         name: readthedocs
