@@ -92,33 +92,35 @@
 <p>A website dedicated to training material for my ICRF.</p>
 <h2 id="bulding-the-docs">Bulding the docs</h2>
 <p>After pushing the changes to <code>main</code> GitHub branch, run the following command:</p>
-<pre><code class="language-sh">mkdocs gh-deploy
+<pre><code class="language-text">mkdocs gh-deploy
 </code></pre>
 <h2 id="environment-installation">Environment installation</h2>
 <p>I recommend to setup the environment with all relevant packages using micromambda.</p>
 <p>First clone the GitHub repo:</p>
-<pre><code class="language-sh">git clone git@github.com:jonathon-langford/ix-train.git
+<pre><code class="language-text">git clone git@github.com:jonathon-langford/ix-train.git
 cd ix-train
 </code></pre>
-<p>If you have not already installed micromambda then it can be done very simply with::</p>
-<pre><code>"${SHELL}" &lt;(curl -L micro.mamba.pm/install.sh)
+<p>If you have not already installed micromambda then it can be done very simply with:</p>
+<pre><code class="language-text">&quot;${SHELL}&quot; &lt;(curl -L micro.mamba.pm/install.sh)
 </code></pre>
-<p>You will be asekd a serious of questions to determine your preferred setup::</p>
-<pre><code>Micromamba binary folder? [~/.local/bin] 
+<p>You will be asekd a serious of questions to determine your preferred setup:</p>
+<pre><code class="language-text">Micromamba binary folder? [~/.local/bin] 
 Init shell (bash)? [Y/n] Y
 Configure conda-forge? [Y/n] Y
 Configure conda-forge? [~/micromamba]
 </code></pre>
-<p>You may want to specify a certain location for the micromambda prefix (last line) as it can take up a reasonably large space. If this is successful you will receive some printout about appending lines to your <code>~/.bashrc</code>. Make sure to run::</p>
-<pre><code>source ~/.bashrc
+<p>You may want to specify a certain location for the micromambda prefix (last line) as it can take up a reasonably large space. If this is successful you will receive some printout about appending lines to your <code>~/.bashrc</code>. Make sure to run:</p>
+<pre><code class="language-text">source ~/.bashrc
 </code></pre>
-<p>Test if `micromamba is available by running::</p>
-<pre><code>micromamba --version
+<p>Test if `micromamba is available by running:</p>
+<pre><code class="language-text">micromamba --version
 </code></pre>
-<p>You can then setup the ix-train environment with::</p>
-<pre><code>micromamba env create --prefix /vols/cms/jl2117/icrf/envs/ix-train -f environment.yaml
+<p>You can then setup the ix-train environment with:</p>
+<pre><code class="language-text">micromamba env create --prefix /vols/cms/jl2117/icrf/envs/ix-train -f environment.yaml
 </code></pre>
-<p>Replacing the prefix with where you want the environment binaries to be stored.</p>
+<p>Replacing the prefix with where you want the environment binaries to be stored. Activate the environment with:</p>
+<pre><code class="language-text">micromamba activate /vols/cms/jl2117/icrf/envs/ix-train
+</code></pre>
               
             </div>
           </div><footer>
@@ -174,5 +176,5 @@ Configure conda-forge? [~/micromamba]
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2024-09-03 21:52:25.846894+00:00
+Build Date UTC : 2024-09-03 21:56:43.728511+00:00
 -->
