@@ -1,17 +1,9 @@
-# Welcome to MkDocs
+# Welcome to IX-train
 
-For full documentation visit [mkdocs.org](https://www.mkdocs.org).
+A website dedicated to training material for my ICRF. To access the code visit the [Github repository](https://github.com/jonathon-langford/ix-train/tree/main).
 
-## Commands
+## Planned tutorials
 
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
-
-## Project layout
-
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+* Bayesian neural networks
+* Normalising flows
+* Diffusion models
