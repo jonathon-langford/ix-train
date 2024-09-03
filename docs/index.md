@@ -4,18 +4,20 @@ A website dedicated to training material for my ICRF.
 
 ## Bulding the docs
 
-After pushing the changes to `main` GitHub branch, run the following command::
-
-    mkdocs gh-deploy
+After pushing the changes to `main` GitHub branch, run the following command:
+```sh
+mkdocs gh-deploy
+```
 
 ## Environment installation
 
 I recommend to setup the environment with all relevant packages using micromambda.
 
-First clone the GitHub repo::
-
-    git clone git@github.com:jonathon-langford/ix-train.git
-    cd ix-train
+First clone the GitHub repo:
+```sh
+git clone git@github.com:jonathon-langford/ix-train.git
+cd ix-train
+```
 
 If you have not already installed micromambda then it can be done very simply with::
 
