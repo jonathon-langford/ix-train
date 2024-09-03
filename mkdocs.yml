@@ -1,1 +1,52 @@
-site_name: My Docs
+site_name: IX-train
+repo_name: GitHub
+repo_url: https://github.com/jonathon-langford/ix-train
+edit_uri: edit/main/docs
+
+nav:
+        - Home: index.md
+
+theme:
+        name: material
+        logo: imperial_x_logo.jpeg
+        favicon: imperial_x_logo.jpeg
+        custom_dir: docs/overrides
+        features:
+            - content.code.copy
+            - navigation.footer
+            - navigation.indexes
+            - navigation.expand
+            - navigation.tracking
+            - navigation.tabs
+            - navigation.tabs.sticky
+            - navigation.top
+            - search.highlight
+            - search.suggest
+            - toc.follow
+
+plugins:
+    - mike
+    - search
+
+extra:
+    version:
+        provider: mike
+
+extra_css:
+  - "mystyle.css"
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+markdown_extensions:
+  - pymdownx.arithmatex:
+      generic: true
+
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - pymdownx.blocks.details
+  - admonition
