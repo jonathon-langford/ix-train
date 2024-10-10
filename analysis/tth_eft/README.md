@@ -35,6 +35,7 @@ The output of this script are diphoton mass distributions in each analysis categ
 * Feature exploration: understand which features in the dataframes can be used to separate ttH from background and the other H production modes.
 * Apply simple selection cuts and see if you can improve the ttH signal strength sensitivity.
 * Use Paul's XGBoost classifier to separate ttH from background. Optimise a cut on this classifier to maximise the sensitivity to the ttH signal strength (minimize the 68% confidence interval).
+* Swap to using data sidebands for the background estimate in the signal region.
 * Replace the ttH signal strength with a SMEFT parametrisation and extract one-at-a-time constraints on the SMEFT Wilson coefficients.
 * Categorise events according to the STXS stage 1.2 framework (in bins of the Higgs boson transverse momentum) and see how this affects the SMEFT constraints.
 * Use [EFT2Obs](https://github.com/ajgilbert/EFT2Obs) tool to derive SMEFT parametrisation for a difference choice of categorisation e.g. m(ttH) instead of pT(H).
