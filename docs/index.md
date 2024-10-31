@@ -2,6 +2,13 @@
 
 A website dedicated to training material for my ICRF.
 
+## Cloning the repo
+
+```text
+git clone git@github.com:jonathon-langford/ix-train.git
+cd ix-train
+```
+
 ## Bulding the docs
 
 After pushing the changes to `main` GitHub branch, run the following command:
@@ -10,8 +17,12 @@ mkdocs gh-deploy
 ```
 
 ## Environment installation
+The recommended means for accessing the software environment is using an LCG releave via CVFMS:
+```text
+. /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/setup.sh
+```
 
-I recommend to setup the environment with all relevant packages using micromambda.
+If you do not have access to CVFMS (lxplus or IC machines) then you can setup an environment with all relevant packages using micromamba.
 
 First clone the GitHub repo:
 ```text
@@ -51,4 +62,3 @@ Replacing the prefix with where you want the environment binaries to be stored. 
 ```text
 micromamba activate /vols/cms/jl2117/icrf/envs/ix-train
 ```
-
