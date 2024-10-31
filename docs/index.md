@@ -13,6 +13,7 @@ cd ix-train
 
 After pushing the changes to `main` GitHub branch, run the following command:
 ```text
+pip install mkdocs  #If needed
 mkdocs gh-deploy
 ```
 
