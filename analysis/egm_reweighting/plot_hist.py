@@ -1,0 +1,188 @@
+import numpy as np
+import pandas as pd
+import matplotlib
+import matplotlib.pyplot as plt
+import mplhep
+
+from utils import *
+
+mplhep.style.use("CMS") 
+mplhep.style.use({"savefig.bbox": "tight"})
+
+kin_var_list = ['probe_pt', 'probe_eta', 'fixedGridRhoAll']
+shape_var_list = ['probe_sieie', 'probe_ecalPFClusterIso', 'probe_trkSumPtHollowConeDR03', 'probe_hcalPFClusterIso', 'probe_pfChargedIsoPFPV', 'probe_phiWidth', 'probe_trkSumPtSolidConeDR04', 'probe_r9', 'probe_pfChargedIsoWorstVtx', 'probe_s4', 'probe_etaWidth', 'probe_mvaID', 'probe_sieip']
+
+percentiles = (0.5,99.5)
+nbins = 50
+
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('-d', '--detector', dest='detector', default='EB', help='Part of detector: EB/EEp/EE-')
+parser.add_argument('--dataset', dest='dataset', default='test', help='Dataset: test/val/train')
+args = parser.parse_args()
+
+input_mc = pd.read_parquet(f"samples_processed/MC_{args.dataset}_{args.detector}_processed.parquet", engine="pyarrow")
+input_data = pd.read_parquet(f"samples_processed/Data_{args.dataset}_{args.detector}_processed.parquet", engine="pyarrow")
+
+_, ax = plt.subplots(2, 1, gridspec_kw={"height_ratios": [1.5, 1], 'hspace': 0}, sharex=True)
+
+for v in shape_var_list:
+    print(f" --> Plotting: {v}")
+    v_corr = f"{v}_corr"
+    
+    if v == "probe_mvaID":
+        lo, hi = (-0.9,1.0)
+    else:
+        lo = np.percentile(pd.concat([input_mc[v],input_data[v]]), percentiles[0])
+        hi = np.percentile(pd.concat([input_mc[v],input_data[v]]), percentiles[1])
+    
+    hists = {}
+    
+    hists['data'] = np.histogram(input_data[v], nbins, (lo,hi), weights=input_data['weight'])
+    hists['data_sumw2'] = np.histogram(input_data[v], nbins, (lo,hi), weights=input_data['weight']**2)
+    
+    hists['mc'] = np.histogram(input_mc[v], nbins, (lo,hi), weights=input_mc['w_post_S1'])
+    hists['mc_sumw2'] = np.histogram(input_mc[v], nbins, (lo,hi), weights=input_mc['w_post_S1']**2)
+    
+    hists['mc_rwgt'] = np.histogram(input_mc[v], nbins, (lo,hi), weights=input_mc['w_post_S2'])
+    hists['mc_rwgt_sumw2'] = np.histogram(input_mc[v], nbins, (lo,hi), weights=input_mc['w_post_S2']**2)
+    
+    hists['mc_flow'] = np.histogram(input_mc[v_corr], nbins, (lo,hi), weights=input_mc['w_post_S1'])
+    hists['mc_flow_sumw2'] = np.histogram(input_mc[v_corr], nbins, (lo,hi), weights=input_mc['w_post_S1']**2)
+    
+    # Top panel
+    mplhep.histplot(
+        hists['data'],
+        w2 = hists['data_sumw2'][0],
+        w2method = "poisson",
+        ax = ax[0],
+        label = "Data",
+        histtype = "fill",
+        flow = "none",
+        alpha = 0.25,
+        facecolor = '#9c9ca1'
+    )
+    
+    mplhep.histplot(
+        hists['mc'],
+        w2 = hists['mc_sumw2'][0],
+        w2method = "poisson",
+        ax = ax[0],
+        label = "MC",
+        histtype = "errorbar",
+        flow = "none",
+        color = '#5790fc'
+    )
+    
+    mplhep.histplot(
+        hists['mc_rwgt'],
+        w2 = hists['mc_rwgt_sumw2'][0],
+        w2method = "poisson",
+        ax = ax[0],
+        label = "MC, rwgt-corrected",
+        histtype = "errorbar",
+        flow = "none",
+        color = '#e42536'
+    )
+    
+    mplhep.histplot(
+        hists['mc_flow'],
+        w2 = hists['mc_flow_sumw2'][0],
+        w2method = "poisson",
+        ax = ax[0],
+        label = "MC, flow-corrected",
+        histtype = "errorbar",
+        flow = "none",
+        color = '#f89c20'
+    )
+    
+    bin_centers = (hists['data'][1][:-1]+hists['data'][1][1:])/2
+    bin_widths = (hists['data'][1][1:]-hists['data'][1][:-1])/2
+    # Add stat uncertainty boxes
+    for i in range(len(bin_widths)):
+        point = (bin_centers[i]-bin_widths[i], hists['data'][0][i]-hists['data_sumw2'][0][i]**0.5)
+        rect = matplotlib.patches.Rectangle(point, 2*bin_widths[i], 2*hists['data_sumw2'][0][i]**0.5, edgecolor='black', facecolor='#9c9ca1', hatch='XX')
+        ax[0].add_patch(rect)
+    
+        point = (bin_centers[i]-bin_widths[i], 1-hists['data_sumw2'][0][i]**0.5/hists['data'][0][i])
+        rect = matplotlib.patches.Rectangle(point, 2*bin_widths[i], 2*hists['data_sumw2'][0][i]**0.5/hists['data'][0][i], facecolor='#9c9ca1', alpha=0.25, hatch='XX')
+        ax[1].add_patch(rect)
+    
+    # Bottom panel
+    mplhep.histplot(
+        (1+hists['data_sumw2'][0]**0.5/hists['data'][0],hists['data'][1]),
+        ax = ax[1],
+        histtype = "step",
+        edges = False,
+        flow = "none",
+        color = 'black'
+    )
+    
+    mplhep.histplot(
+        (1-hists['data_sumw2'][0]**0.5/hists['data'][0],hists['data'][1]),
+        ax = ax[1],
+        histtype = "step",
+        edges = False,
+        flow = "none",
+        color = 'black'
+    )
+    
+    
+    mplhep.histplot(
+        (hists['mc'][0]/hists['data'][0],hists['mc'][1]),
+        yerr = hists['mc_sumw2'][0]**0.5/hists['data'][0],
+        ax = ax[1],
+        histtype = "errorbar",
+        flow = "none",
+        color = '#5790fc'
+    )
+    
+    mplhep.histplot(
+        (hists['mc_rwgt'][0]/hists['data'][0],hists['mc_rwgt'][1]),
+        yerr = hists['mc_rwgt_sumw2'][0]**0.5/hists['data'][0],
+        ax = ax[1],
+        histtype = "errorbar",
+        flow = "none",
+        color = '#e42536'
+    )
+    
+    mplhep.histplot(
+        (hists['mc_flow'][0]/hists['data'][0],hists['mc_flow'][1]),
+        yerr = hists['mc_flow_sumw2'][0]**0.5/hists['data'][0],
+        ax = ax[1],
+        histtype = "errorbar",
+        flow = "none",
+        color = '#f89c20'
+    )
+    
+    
+    ax[0].set_xlim(lo,hi)
+    ax[1].set_xlim(lo,hi)
+    ax[1].set_ylim(0.85,1.15)
+    ax[1].axhline(1, color='grey', ls='--')
+    
+    ax[1].set_xlabel(var_name_pretty[v])
+    ax[0].set_ylabel("Events")
+    ax[1].set_ylabel("MC / data", loc='center')
+    
+    ax[0].legend(loc='best', fontsize=20)
+    
+    # Add label
+    mplhep.cms.label(
+        "Preliminary",
+        data = True,
+        year = "2022",
+        com = "13.6",
+        lumi = 26.7,
+        lumi_format="{0:.1f}",
+        ax = ax[0]
+    )
+    
+    if not os.path.isdir("plots"):
+        os.system("mkdir -p plots")
+
+    plt.savefig(f"plots/zee_{v}.pdf")
+    plt.savefig(f"plots/zee_{v}.png")
+    
+    ax[0].cla()
+    ax[1].cla()
