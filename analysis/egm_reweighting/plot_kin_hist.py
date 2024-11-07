@@ -11,7 +11,6 @@ mplhep.style.use("CMS")
 mplhep.style.use({"savefig.bbox": "tight"})
 
 kin_var_list = ['probe_pt', 'probe_eta', 'fixedGridRhoAll']
-shape_var_list = ['probe_sieie', 'probe_ecalPFClusterIso', 'probe_trkSumPtHollowConeDR03', 'probe_hcalPFClusterIso', 'probe_pfChargedIsoPFPV', 'probe_phiWidth', 'probe_trkSumPtSolidConeDR04', 'probe_r9', 'probe_pfChargedIsoWorstVtx', 'probe_s4', 'probe_etaWidth', 'probe_mvaID', 'probe_sieip']
 
 percentiles = (0.5,99.5)
 
@@ -29,37 +28,28 @@ nbins = int(args.nbins)
 input_mc = pd.read_parquet(f"samples_processed/MC_{args.dataset}_{args.detector}_processed.parquet", engine="pyarrow")
 input_data = pd.read_parquet(f"samples_processed/Data_{args.dataset}_{args.detector}_processed.parquet", engine="pyarrow")
 
-if args.detector in ['EEp','EEm']:
-    shape_var_list.extend(['probe_esEffSigmaRR','probe_esEnergyOverRawE'])
-
 _, ax = plt.subplots(2, 1, gridspec_kw={"height_ratios": [1.5, 1], 'hspace': 0}, sharex=True)
 
-for v in shape_var_list:
+for v in kin_var_list:
     print(f" --> Plotting: {v}")
     v_corr = f"{v}_corr"
     
-    if v == "probe_mvaID":
-        lo, hi = (-0.9,1.0)
-    elif v in ['probe_ecalPFClusterIso','probe_trkSumPtHollowConeDR03','probe_hcalPFClusterIso','probe_pfChargedIsoPFPV','probe_trkSumPtSolidConeDR04','probe_pfChargedIsoWorstVtx']:
-        lo = np.percentile(pd.concat([input_mc[v],input_data[v]]), percentiles[0])
-        hi = np.percentile(pd.concat([input_mc[v],input_data[v]]), 99)
-    else:
-        lo = np.percentile(pd.concat([input_mc[v],input_data[v]]), percentiles[0])
-        hi = np.percentile(pd.concat([input_mc[v],input_data[v]]), percentiles[1])
+    lo = np.percentile(pd.concat([input_mc[v],input_data[v]]), percentiles[0])
+    hi = np.percentile(pd.concat([input_mc[v],input_data[v]]), percentiles[1])
     
     hists = {}
     
     hists['data'] = np.histogram(input_data[v], nbins, (lo,hi), weights=input_data['weight'])
     hists['data_sumw2'] = np.histogram(input_data[v], nbins, (lo,hi), weights=input_data['weight']**2)
+
+    hists['mc_prekin'] = np.histogram(input_mc[v], nbins, (lo,hi), weights=input_mc['weight_norm'])
+    hists['mc_prekin_sumw2'] = np.histogram(input_mc[v], nbins, (lo,hi), weights=input_mc['weight_norm']**2)
     
     hists['mc'] = np.histogram(input_mc[v], nbins, (lo,hi), weights=input_mc['w_post_S1'])
     hists['mc_sumw2'] = np.histogram(input_mc[v], nbins, (lo,hi), weights=input_mc['w_post_S1']**2)
     
     hists['mc_rwgt'] = np.histogram(input_mc[v], nbins, (lo,hi), weights=input_mc['w_post_S2'])
     hists['mc_rwgt_sumw2'] = np.histogram(input_mc[v], nbins, (lo,hi), weights=input_mc['w_post_S2']**2)
-    
-    hists['mc_flow'] = np.histogram(input_mc[v_corr], nbins, (lo,hi), weights=input_mc['w_post_S1'])
-    hists['mc_flow_sumw2'] = np.histogram(input_mc[v_corr], nbins, (lo,hi), weights=input_mc['w_post_S1']**2)
     
     # Top panel
     mplhep.histplot(
@@ -72,6 +62,17 @@ for v in shape_var_list:
         flow = "none",
         alpha = 0.25,
         facecolor = '#9c9ca1'
+    )
+
+    mplhep.histplot(
+        hists['mc_prekin'],
+        w2 = hists['mc_prekin_sumw2'][0],
+        w2method = "poisson",
+        ax = ax[0],
+        label = "MC (pre kinematic rwgt)",
+        histtype = "errorbar",
+        flow = "none",
+        color = '#a96b59'
     )
     
     mplhep.histplot(
@@ -96,19 +97,10 @@ for v in shape_var_list:
         color = '#e42536'
     )
     
-    mplhep.histplot(
-        hists['mc_flow'],
-        w2 = hists['mc_flow_sumw2'][0],
-        w2method = "poisson",
-        ax = ax[0],
-        label = "MC, flow-corrected",
-        histtype = "errorbar",
-        flow = "none",
-        color = '#f89c20'
-    )
     
     bin_centers = (hists['data'][1][:-1]+hists['data'][1][1:])/2
     bin_widths = (hists['data'][1][1:]-hists['data'][1][:-1])/2
+
     # Add stat uncertainty boxes
     for i in range(len(bin_widths)):
         point = (bin_centers[i]-bin_widths[i], hists['data'][0][i]-hists['data_sumw2'][0][i]**0.5)
@@ -138,7 +130,15 @@ for v in shape_var_list:
         color = 'black'
     )
     
-    
+    mplhep.histplot(
+        (hists['mc_prekin'][0]/hists['data'][0],hists['mc_prekin'][1]),
+        yerr = hists['mc_prekin_sumw2'][0]**0.5/hists['data'][0],
+        ax = ax[1],
+        histtype = "errorbar",
+        flow = "none",
+        color = '#a96b59'
+    )
+
     mplhep.histplot(
         (hists['mc'][0]/hists['data'][0],hists['mc'][1]),
         yerr = hists['mc_sumw2'][0]**0.5/hists['data'][0],
@@ -157,14 +157,6 @@ for v in shape_var_list:
         color = '#e42536'
     )
     
-    mplhep.histplot(
-        (hists['mc_flow'][0]/hists['data'][0],hists['mc_flow'][1]),
-        yerr = hists['mc_flow_sumw2'][0]**0.5/hists['data'][0],
-        ax = ax[1],
-        histtype = "errorbar",
-        flow = "none",
-        color = '#f89c20'
-    )
     
     
     ax[0].set_xlim(lo,hi)
@@ -179,8 +171,10 @@ for v in shape_var_list:
     
     ax[0].legend(loc='best', fontsize=20)
 
-    if v in ['probe_ecalPFClusterIso','probe_trkSumPtHollowConeDR03','probe_hcalPFClusterIso','probe_pfChargedIsoPFPV','probe_trkSumPtSolidConeDR04','probe_pfChargedIsoWorstVtx']:
+    if v == "probe_pt":
         ax[0].set_yscale("log")
+    elif v == "probe_eta":
+        ax[0].set_ylim(ax[0].get_ylim()[0],ax[0].get_ylim()[1]*1.2)
 
     for be in (bin_centers-bin_widths):
         ax[1].axvline(be, color='grey', alpha=0.1)
@@ -196,16 +190,16 @@ for v in shape_var_list:
         ax = ax[0]
     )
     
-    if not os.path.isdir("plots"):
-        os.system("mkdir -p plots")
+    if not os.path.isdir("plots_kin"):
+        os.system("mkdir -p plots_kin")
 
     if args.ext != "":
         ext_str = f"_{args.ext}"
     else:
         ext_str = ""
 
-    plt.savefig(f"plots/zee_{args.detector}_{args.dataset}_{v}{ext_str}.pdf")
-    plt.savefig(f"plots/zee_{args.detector}_{args.dataset}_{v}{ext_str}.png")
+    plt.savefig(f"plots_kin/zee_{args.detector}_{args.dataset}_{v}{ext_str}.pdf")
+    plt.savefig(f"plots_kin/zee_{args.detector}_{args.dataset}_{v}{ext_str}.png")
     
     ax[0].cla()
     ax[1].cla()

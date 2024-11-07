@@ -30,5 +30,7 @@ var_name_pretty = {
     "probe_etaWidth" : "Probe $\\eta$-width",
     "probe_mvaID" : "Probe mvaID",
     "probe_sieip" : "Probe $\\sigma_{i{\\eta}i\\phi}$",
-    "probe_pfChargedIso" : "Probe PFChargedIso"
+    "probe_pfChargedIso" : "Probe PFChargedIso",
+    "probe_esEffSigmaRR" : "Probe esEffSigmaRR",
+    "probe_esEnergyOverRawE" : "Probe esEnergyOverRawE"
 }
