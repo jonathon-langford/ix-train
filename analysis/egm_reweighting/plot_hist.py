@@ -22,6 +22,7 @@ parser.add_argument('--dataset', dest='dataset', default='test', help='Dataset: 
 parser.add_argument('--nbins', dest='nbins', default=40, type=int, help='Number of bins in plot')
 parser.add_argument('--ext', dest='ext', default="", help='Extension for saving')
 parser.add_argument('--do-variance-panel', dest='do_variance_panel', default=False, action="store_true", help='Add variance panel')
+parser.add_argument('--plot-path', dest='plot_path', default="plots", help='Path to save plots')
 args = parser.parse_args()
 
 # Plotting options
@@ -272,17 +273,18 @@ for v in shape_var_list:
         ax = ax[0]
     )
     
-    if not os.path.isdir("plots"):
-        os.system("mkdir -p plots")
+    if not os.path.isdir(args.plot_path):
+        os.system(f"mkdir -p {args.plot_path}")
 
     if args.ext != "":
         ext_str = f"_{args.ext}"
     else:
         ext_str = ""
 
-    plt.savefig(f"plots/zee_{args.detector}_{args.dataset}_{v}{ext_str}.pdf")
-    plt.savefig(f"plots/zee_{args.detector}_{args.dataset}_{v}{ext_str}.png")
+    plt.savefig(f"{args.plot_path}/zee_{args.detector}_{args.dataset}_{v}{ext_str}.pdf")
+    plt.savefig(f"{args.plot_path}/zee_{args.detector}_{args.dataset}_{v}{ext_str}.png")
     
     ax[0].cla()
     ax[1].cla()
-    ax[2].cla()
+    if args.do_variance_panel:
+        ax[2].cla()

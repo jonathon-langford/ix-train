@@ -20,6 +20,7 @@ parser.add_argument('--nbins', dest='nbins', default=40, type=int, help='Number 
 parser.add_argument('--ext', dest='ext', default="", help='Extension for saving')
 parser.add_argument('--do-correction-factor', dest='do_correction_factor', default=False, action="store_true", help='Plot correction factors')
 parser.add_argument('--plot-only-S2', dest='plot_only_S2', default=False, action="store_true", help='Plot only shape correction factor')
+parser.add_argument('--plot-path', dest='plot_path', default="plots_weight", help='Path to save plots')
 args = parser.parse_args()
 
 # Plotting options
@@ -166,15 +167,15 @@ mplhep.cms.label(
     ax = ax
 )
 
-if not os.path.isdir("plots_weight"):
-    os.system("mkdir -p plots_weight")
+if not os.path.isdir(args.plot_path):
+    os.system(f"mkdir -p {args.plot_path}")
 
 if args.ext != "":
     ext_str = f"_{args.ext}"
 else:
     ext_str = ""
 
-plt.savefig(f"plots_weight/zee_{args.detector}_{args.dataset}_weight{ext_str}.pdf")
-plt.savefig(f"plots_weight/zee_{args.detector}_{args.dataset}_weight{ext_str}.png")
+plt.savefig(f"{args.plot_path}/zee_{args.detector}_{args.dataset}_weight{ext_str}.pdf")
+plt.savefig(f"{args.plot_path}/zee_{args.detector}_{args.dataset}_weight{ext_str}.png")
 
 ax.cla()
