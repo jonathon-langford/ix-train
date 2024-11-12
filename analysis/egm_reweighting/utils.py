@@ -32,5 +32,5 @@ var_name_pretty = {
     "probe_sieip" : "Probe $\\sigma_{i{\\eta}i\\phi}$",
     "probe_pfChargedIso" : "Probe PFChargedIso",
     "probe_esEffSigmaRR" : "Probe esEffSigmaRR",
-    "probe_esEnergyOverRawE" : "Probe esEnergyOverRawE"
+    "probe_esEnergyOverRawE" : "Probe esEnergyOverRawE",
 }
