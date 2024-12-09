@@ -1,11 +1,5 @@
 import numpy as np
 import pandas as pd
-import matplotlib
-import matplotlib.pyplot as plt
-import mplhep
-
-mplhep.style.use("CMS")
-mplhep.style.use({"savefig.bbox": "tight"})
 
 # Cut threshold 
 thr = 90
@@ -18,11 +12,13 @@ def ComputeWeights(df, cg=0, ctgre=0, chg=0, weight_var="plot_weight"):
     return df[weight_var]*mu
 
 # Load dataframe and select events
-f_name = "ttH_processed_selected_with_smeft.parquet"
+folder_name = "/vols/cms/jl2117/icrf/hgg/MSci_projects/samples/Pass2"
+f_name = f"{folder_name}/ttH_processed_selected_with_smeft.parquet"
 df = pd.read_parquet(f_name)
 
 mask = df['mass_sel'] == df['mass_sel']
 df = df[mask]
+sumw = df['plot_weight'].sum()
 
 # Calculate systematic-varied weights
 w = ComputeWeights(df,cg=0.5)
@@ -49,4 +45,7 @@ y = p[0]*pt*pt + p[1]*pt + p[2]
 # Apply cut: quadratic cut on mu
 mask = mu < y
 df = df[mask]
-df.to_parquet("ttH_processed_selected_with_smeft_cut_mupcleq90.parquet")
+
+# Correct weights to have same as before cut
+df['plot_weight'] = df['plot_weight']*(sumw/df['plot_weight'].sum())
+df.to_parquet(f"{folder_name}/ttH_processed_selected_with_smeft_cut_mupcleq90.parquet")
