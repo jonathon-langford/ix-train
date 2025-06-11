@@ -14,7 +14,7 @@ from scipy import optimize
 
 # Function to make confusion matrix with correct weights
 from sklearn.metrics import confusion_matrix
-def plot_confusion_matrix(df, labels, normalize=False, normalizeBy='truth', category_pred='category_pred', dropBkg=False, ext=""):
+def plot_confusion_matrix(df, labels, normalize=False, normalizeBy='truth', category_pred='category_pred', dropBkg=False, plot_dir="plots", ext=""):
     
     cm = confusion_matrix(df['category'], df[category_pred], sample_weight=df['weight_lumiScaled'])
     
@@ -58,11 +58,11 @@ def plot_confusion_matrix(df, labels, normalize=False, normalizeBy='truth', cate
         cax.set_clim(vmin, vmax)
 
         if normalizeBy == 'truth':
-            fig.savefig(f'plots/confusion_matrix_normalized_by_truth{ext_str}.png')
+            fig.savefig(f'{plot_dir}/confusion_matrix_normalized_by_truth{ext_str}.png')
         elif normalizeBy == 'pred':
-            fig.savefig(f'plots/confusion_matrix_normalized_by_pred{ext_str}.png')
+            fig.savefig(f'{plot_dir}/confusion_matrix_normalized_by_pred{ext_str}.png')
     else:
-        fig.savefig(f'plots/confusion_matrix{ext_str}.png', bbox_inches='tight')
+        fig.savefig(f'{plot_dir}/confusion_matrix{ext_str}.png', bbox_inches='tight')
     ax.cla()
 
 # Function to calculate confidence level intervals for spline crossings
@@ -159,6 +159,9 @@ def find_crossings(graph, yval, spline_type="cubic", spline_points=1000, remin=T
 # Function to add results to label
 def add_res_to_label(val):
     return "$%.2f^{+%.2f}_{-%.2f}$"%(val[0],abs(val[1]),abs(val[2]))
+
+def data_to_axis(ax, point):
+    return (ax.transAxes + ax.transData.inverted()).inverted().transform(point)
 
 # Option to calculate the Hessian matrix using finite differences
 def finite_diff_hessian(f, mu_prof, mu_fixed, counts, labels, profiled_idx, fixed_idx, eps=1e-5):
