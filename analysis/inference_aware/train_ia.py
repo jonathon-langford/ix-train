@@ -22,7 +22,7 @@ from eval_tools import *
 # Options for running script TODO replace with argparse
 do_plotting = False
 do_evaluation = True
-ext = "onlyxgb_resX"
+ext = "allfeaturesincxgb_resX_od50_cosannsingle_varsum"
 plot_dir = f"plots/{ext}"
 if not os.path.exists(plot_dir):
     os.makedirs(plot_dir)
@@ -39,22 +39,25 @@ ext_str = f"_{ext}" if ext != "" else ""
 
 # Training options and hyperparameters
 train_hp = {
+    "loss_type":"varsum",
     "seed":0,
     "nodes":[50, 50],
     "lr":1e-3,
-    "N_epochs":100,
+    "N_epochs":1000,
     "batch_size":100000,
     "temp":0.1,
     "init_weight_std":0.1,
     "use_residualX_layer":True,
+    "inner_output_dim":50,
     "init_weight_final_std":0.1,
+    "add_final_activation":False,
     "use_all_features":True,
     "dummy_set":-4.0,
     "include_xgboost_outputs":True,
-    "use_cosine_annealing":False,
+    "use_cosine_annealing":True,
     "lr_initial":1e-3,
     "lr_final":1e-4,
-    "cosine_epoch_cycle":333,
+    "cosine_epoch_cycle":1000,
     "use_temp_scheduler":False,
     "temp_initial":0.1,
     "temp_final":0.01
@@ -128,27 +131,41 @@ if do_plotting:
         fig.savefig(f'{plot_dir}/{feature}_normalised_histogram.png')
         ax.cla()
 
-
 # Build Inference-Aware neural networks
 if train_hp['use_all_features']:
-    model = NetResidualInferenceAwareAllFeatures(
-        input_dim=len(total_features),
-        nodes=train_hp['nodes'],
-        output_dim=len(labels),
-        temp=train_hp['temp'],
-        init_weight_std=train_hp['init_weight_std'],
-        include_xgboost_outputs=train_hp['include_xgboost_outputs']
-    )
+    if train_hp['use_residualX_layer']:
+        model = NetResidualXInferenceAwareAllFeatures(
+            input_dim=len(total_features),
+            nodes=train_hp['nodes'],
+            output_dim=train_hp['inner_output_dim'],
+            n_labels=len(labels),
+            temp=train_hp['temp'],
+            init_weight_std=train_hp['init_weight_std'],
+            init_weight_final_std=train_hp['init_weight_final_std'],
+            add_final_activation=train_hp['add_final_activation'],
+            include_xgboost_outputs=train_hp['include_xgboost_outputs']
+        )
+    else:
+        model = NetResidualInferenceAwareAllFeatures(
+            input_dim=len(total_features),
+            nodes=train_hp['nodes'],
+            output_dim=len(labels),
+            temp=train_hp['temp'],
+            init_weight_std=train_hp['init_weight_std'],
+            include_xgboost_outputs=train_hp['include_xgboost_outputs']
+        )
     features = total_features
 else:
     if train_hp['use_residualX_layer']:
         model = NetResidualXInferenceAware(
             input_dim=len(probs),
             nodes=train_hp['nodes'],
-            output_dim=len(labels),
+            output_dim=train_hp['inner_output_dim'],
+            n_labels=len(labels),
             temp=train_hp['temp'],
             init_weight_std=train_hp['init_weight_std'],
-            init_weight_final_std=train_hp['init_weight_final_std']
+            init_weight_final_std=train_hp['init_weight_final_std'],
+            add_final_activation=train_hp['add_final_activation']
         )
     else:
         model = NetResidualInferenceAware(
@@ -172,7 +189,8 @@ res = train_network_ia(
     train_hp=train_hp,
     temp=train_hp['temp'],
     cosine_anneal=train_hp['use_cosine_annealing'],
-    use_temp_scheduler=train_hp['use_temp_scheduler']
+    use_temp_scheduler=train_hp['use_temp_scheduler'],
+    loss_type=train_hp['loss_type']
 )
 
 # Extract results

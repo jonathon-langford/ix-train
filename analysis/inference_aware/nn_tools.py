@@ -69,7 +69,7 @@ def NLL_asimov_torch(mu, counts, n_bkg):
     return poisson_terms[1:].sum()
 
 # InferenceAware loss function
-def InferenceAwareLoss(model, X, y, w, sumw, labels, n_bkg=1):
+def InferenceAwareLoss(model, X, y, w, sumw, labels, n_bkg=1, loss_type='varsum'):
     # Extract weighted counts
     y_weighted_transpose = torch.multiply(y.T, w)
     # Reweight to get expected counts over full dataset
@@ -93,7 +93,13 @@ def InferenceAwareLoss(model, X, y, w, sumw, labels, n_bkg=1):
 
     # Compute inverse of hessian and return sum of variances as loss
     cov = torch.linalg.inv(hess)
-    return torch.sum(torch.diag(cov))
+
+    if loss_type == 'varsum':
+        # Return sum of diagonal elements (variances) of the covariance matrix
+        return torch.sum(torch.diag(cov))
+    elif loss_type == 'logdet':
+        # Return log-determinant of the covariance matrix
+        return torch.log(torch.det(cov))
 
 
 class NetResidualInferenceAware(nn.Module):
@@ -227,13 +233,24 @@ class NetResidualInferenceAwareAllFeatures(nn.Module):
 # Class for inference-aware neural network with residual connections
 # Extra linear layer at the end to allow for more complex transformations
 class NetResidualXInferenceAware(nn.Module):
-    def __init__(self, input_dim=5, nodes=[50,50], output_dim=5, temp=0.1, init_weight_std=0.1, init_weight_final_std=0.01):
+    def __init__(self, input_dim=5, nodes=[50,50], output_dim=5, 
+                 n_labels=5,
+                 temp=0.1, 
+                 init_weight_std=0.1, 
+                 init_weight_final_std=0.01, 
+                 add_final_activation=False
+                 ):
         super(NetResidualXInferenceAware, self).__init__()
         self.temperature = temp
         self.init_weight_std = init_weight_std
         self.init_weight_final_std = init_weight_final_std
-        self.input_dim = input_dim
+        self.add_final_activation = add_final_activation
+
+        # Define number of input/output nodes
         self.output_dim = output_dim
+        self.input_dim = input_dim
+        self.n_labels = n_labels
+
         # Build network
         n_nodes = [input_dim] + nodes + [output_dim]
         self.layers = nn.ModuleList()
@@ -241,26 +258,38 @@ class NetResidualXInferenceAware(nn.Module):
             self.layers.append(nn.Linear(n_nodes[i], n_nodes[i + 1]))
             #self.layers.append(nn.ReLU())
             self.layers.append(nn.Tanh())
+
         # Add extra linear layer which is initialised as a residual connection
-        self.layers.append(nn.Linear(input_dim+output_dim, output_dim))
+        self.layers.append(nn.Linear(self.n_labels + self.output_dim, self.n_labels))
+        if add_final_activation:
+            self.layers.append(nn.Tanh())
         self.init_weights()
 
     def init_weights(self):
-        for layer in self.layers[:-1]:  # Exclude the last layer for now
+        if self.add_final_activation:
+            layers = self.layers[:-2]  # Exclude the last two layers
+        else:
+            layers = self.layers[:-1] # Exclude the last layer
+
+        for layer in layers:  # Exclude the last residual (+activation) layer
             if isinstance(layer, nn.Linear):
                 # Initialize weights with small non-zero values to avoid zero gradients
                 # and biases with zeros
                 nn.init.normal_(layer.weight, mean=0.0, std=self.init_weight_std)
                 nn.init.zeros_(layer.bias)
-        # Initialize the last layer to be a residual connection
-        last_layer = self.layers[-1]
-        w = torch.tensor(np.concatenate([np.eye(self.input_dim),np.zeros((self.input_dim,self.output_dim))]), dtype=torch.float32)
-        noise = np.random.normal(0, self.init_weight_final_std, (self.input_dim+self.output_dim,self.output_dim))
-        w += torch.tensor(noise, dtype=torch.float32)
-        last_layer.weight.data = w.T
-        nn.init.zeros_(last_layer.bias)
-        
 
+        # Initialize the last layer to be a residual connection
+        if self.add_final_activation:
+            res_layer = self.layers[-2]
+        else:
+            res_layer = self.layers[-1]
+        
+        w = torch.tensor(np.concatenate([np.eye(self.n_labels),np.zeros((self.output_dim,self.n_labels))]), dtype=torch.float32)
+        noise = np.random.normal(0, self.init_weight_final_std, (self.n_labels+self.output_dim,self.n_labels))
+        w += torch.tensor(noise, dtype=torch.float32)
+        res_layer.weight.data = w.T
+        nn.init.zeros_(res_layer.bias)
+        
     # Function to print model layer weights and biases
     def print_weights(self):
         for i, layer in enumerate(self.layers):
@@ -272,10 +301,21 @@ class NetResidualXInferenceAware(nn.Module):
 
     def forward(self, x):
         out = self.layers[0](x)
-        for layer in self.layers[1:-1]:
+        if self.add_final_activation:
+            layers = self.layers[1:-2]  # Exclude the last two layers
+        else:
+            layers = self.layers[1:-1]
+
+        for layer in layers:
             out = layer(out)
-        # Apply residual connection with last layer
-        out = self.layers[-1](torch.cat((x, out), dim=1))  # Concatenate input with output
+
+        # Apply residual connection with last linear layer
+        if self.add_final_activation:
+            out = self.layers[-2](torch.cat((x, out), dim=1))
+            out = self.layers[-1](out)  # Apply final activation
+        else:
+            out = self.layers[-1](torch.cat((x, out), dim=1))  # Concatenate input with output
+        
         # Apply temperature scaling
         out = out / self.temperature
         return torch.softmax(out, dim=1)
@@ -286,11 +326,154 @@ class NetResidualXInferenceAware(nn.Module):
     # Function to return argmax of the model output
     def get_probmax(self, x):
         out = self.layers[0](x)
-        for layer in self.layers[1:-1]:
+        if self.add_final_activation:
+            layers = self.layers[1:-2]
+        else:
+            layers = self.layers[1:-1]
+
+        for layer in layers:
             out = layer(out)
-        # Apply residual connection with last layer
-        out = self.layers[-1](torch.cat((x, out), dim=1))  # Concatenate input with output
+
+        # Apply residual connection with last linear layer
+        if self.add_final_activation:
+            out = self.layers[-2](torch.cat((x, out), dim=1))
+            out = self.layers[-1](out)
+        else:
+            out = self.layers[-1](torch.cat((x, out), dim=1))  # Concatenate input with output
+
         return torch.argmax(out, dim=1)
+
+# Class for inference-aware neural network with residual connections
+# Use all input features with XGBoost probabilities from CE loss to define base of residual
+# Extra linear layer at the end to allow for more complex transformations
+class NetResidualXInferenceAwareAllFeatures(nn.Module):
+    def __init__(self, input_dim=25, nodes=[50,50], output_dim=5,
+                 n_labels=5, 
+                 temp=0.1, 
+                 init_weight_std=0.1,
+                 init_weight_final_std=0.01,
+                 add_final_activation=False,
+                 include_xgboost_outputs=True
+                 ):
+        super(NetResidualXInferenceAwareAllFeatures, self).__init__()
+        self.temperature = temp
+        self.init_weight_std = init_weight_std
+        self.init_weight_final_std = init_weight_final_std
+        self.add_final_activation = add_final_activation
+        self.include_xgboost_outputs = include_xgboost_outputs
+
+        # Define number of input/output nodes
+        self.output_dim = output_dim
+        self.input_dim = input_dim if self.include_xgboost_outputs else input_dim - n_labels
+        self.n_labels = n_labels
+
+        # Build network
+        n_nodes = [self.input_dim] + nodes + [self.output_dim]
+
+        self.layers = nn.ModuleList()
+        for i in range(len(n_nodes) - 1):
+            self.layers.append(nn.Linear(n_nodes[i], n_nodes[i + 1]))
+            #self.layers.append(nn.ReLU())
+            self.layers.append(nn.Tanh())
+        
+        # Add extra linear layer which is initialised as a residual connection
+        self.layers.append(nn.Linear(self.n_labels + self.output_dim, self.n_labels))
+        if self.add_final_activation:
+            self.layers.append(nn.Tanh())
+
+        self.init_weights()
+
+    def init_weights(self):
+        if self.add_final_activation:
+            layers = self.layers[:-2]  # Exclude the last two layers
+        else:
+            layers = self.layers[:-1]
+
+        for layer in layers:
+            if isinstance(layer, nn.Linear):
+                # Initialize weights with small non-zero values to avoid zero gradients
+                # and biases with zeros
+                nn.init.normal_(layer.weight, mean=0.0, std=self.init_weight_std)
+                nn.init.zeros_(layer.bias)
+
+        # Initialize the last layer to be a residual connection
+        if self.add_final_activation:
+            res_layer = self.layers[-2]
+        else:
+            res_layer = self.layers[-1]
+
+        w = torch.tensor(np.concatenate([np.eye(self.n_labels), np.zeros((self.output_dim, self.n_labels))]), dtype=torch.float32)
+        noise = np.random.normal(0, self.init_weight_final_std, (self.n_labels+self.output_dim,self.n_labels)) 
+        w += torch.tensor(noise, dtype=torch.float32)
+        res_layer.weight.data = w.T
+        nn.init.zeros_(res_layer.bias)
+
+    # Function to print model layer weights and biases
+    def print_weights(self):
+        for i, layer in enumerate(self.layers):
+            if isinstance(layer, nn.Linear):
+                print(f"Layer {i}:")
+                print(f"Weights: {layer.weight.data}")
+                print(f"Biases: {layer.bias.data}")
+                print("-" * 20)
+
+    def forward(self, x):
+        if self.include_xgboost_outputs:
+            # Use all input features including XGBoost outputs
+            out = self.layers[0](x)
+        else:
+            # Use only features excluding XGBoost outputs
+            out = self.layers[0](x[:, self.n_labels:])
+
+        if self.add_final_activation:
+            layers = self.layers[1:-2]  # Exclude the last two layers
+        else:
+            layers = self.layers[1:-1]
+
+        for layer in layers:
+            out = layer(out)
+
+        # Apply residual connection with last linear layer
+        if self.add_final_activation:
+            out = self.layers[-2](torch.cat((x[:,:self.n_labels], out), dim=1))
+            out = self.layers[-1](out)
+        else:
+            out = self.layers[-1](torch.cat((x[:,:self.n_labels], out), dim=1))
+
+        # Apply temperature scaling
+        out = out / self.temperature
+        return torch.softmax(out, dim=1)
+    
+    def set_temperature(self, temp):
+        self.temperature = temp
+
+    # Function to return argmax of the model output
+    def get_probmax(self, x):
+        if self.include_xgboost_outputs:
+            # Use all input features including XGBoost outputs
+            out = self.layers[0](x)
+        else:
+            # Use only features excluding XGBoost outputs
+            out = self.layers[0](x[:, self.n_labels:])
+
+        if self.add_final_activation:
+            layers = self.layers[1:-2]
+        else:
+            layers = self.layers[1:-1]
+    
+        # Pass through the middle layers
+        for layer in layers:
+            out = layer(out)
+
+        # Apply residual connection with last linear layer
+        if self.add_final_activation:
+            out = self.layers[-2](torch.cat((x[:,:self.n_labels], out), dim=1))
+            out = self.layers[-1](out)
+        else:
+            out = self.layers[-1](torch.cat((x[:,:self.n_labels], out), dim=1))
+
+        return torch.argmax(out, dim=1)
+
 
 # Function for exponentially decaying temperature scheduler
 def temp_scheduler(epoch, initial_temp, final_temp, total_epochs):
@@ -301,7 +484,8 @@ def temp_scheduler(epoch, initial_temp, final_temp, total_epochs):
 def train_network_ia(model, df_train, df_test, 
                      labels, features, category, weight_var, 
                      temp=0.1, n_bkg=1, train_hp={}, 
-                     cosine_anneal=False, use_temp_scheduler=False):
+                     cosine_anneal=False, use_temp_scheduler=False,
+                     loss_type='varsum'):
 
     # Define lists for tracking lr and temp
     lr_vals = []
@@ -338,7 +522,7 @@ def train_network_ia(model, df_train, df_test,
     #sumw_test = torch.multiply(y_test.T, w_test).sum(axis=1)
 
     # Define inference-aware loss
-    ia_loss = lambda m, x, y, w: InferenceAwareLoss(m, x, y, w, sumw_train, labels, n_bkg=n_bkg)
+    ia_loss = lambda m, x, y, w: InferenceAwareLoss(m, x, y, w, sumw_train, labels, n_bkg=n_bkg, loss_type=loss_type)
 
     # Store train and test loss
     loss_train, loss_test = [], []

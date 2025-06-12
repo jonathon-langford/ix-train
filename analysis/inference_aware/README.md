@@ -12,7 +12,7 @@ Then copy all of the parquet files to the `samples` directory:
 cp {path-to-samples}/*.parquet samples/
 ```
 
-Train the classifier with:
+Train the XGBoost classifier with:
 ```
 python3 train.py
 ```
@@ -38,3 +38,12 @@ The script will output:
 There are two comments in the `train.py` script which indicate where to:
 * Do the feature transformation if working with neural networks
 * Swap the XGBoost model for a neural network
+
+## Inference-aware learning
+You can then run the inference-aware learning on top of the outputs with:
+```
+python3 train_ia.py
+```
+There are a bunch of options to play around with in the `train_hp` dictionary at the top of the script.
+
+More details to come.
